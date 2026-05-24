@@ -1,65 +1,188 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { ShoppingCart, Warehouse, Package } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+interface WarehouseData {
+  warehouseId: string;
+  warehouseName: string;
+  totalStock: number;
+  reservedStock: number;
+  availableStock: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  warehouses: WarehouseData[];
+}
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  async function fetchProducts() {
+    const res = await fetch("/api/products");
+    const data = await res.json();
+    setProducts(data);
+  }
+
+  async function reserveProduct(
+    productId: string,
+    warehouseId: string
+  ) {
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId,
+          warehouseId,
+          quantity: 1,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Reservation failed");
+        return;
+      }
+
+      router.push(`/checkout/${data.id}`);
+    } catch (err) {
+      alert("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen px-6 py-10">
+      <div className="max-w-7xl mx-auto">
+
+        <div className="mb-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 text-transparent bg-clip-text">
+              Allo Inventory Engine
+            </h1>
+
+            <p className="text-gray-400 mt-3 text-lg">
+              Real-time multi-warehouse reservation system
+            </p>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-xl">
+            <p className="text-sm text-gray-400">System Status</p>
+            <p className="text-green-400 font-semibold">
+              Operational
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="group rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 hover:border-indigo-500/40 transition-all duration-300 hover:scale-[1.02]"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {product.name}
+                  </h2>
+
+                  <div className="flex items-center gap-2 mt-2 text-gray-400 text-sm">
+                    <Package size={16} />
+                    Multi-warehouse inventory
+                  </div>
+                </div>
+
+                <div className="bg-indigo-500/20 p-3 rounded-2xl">
+                  <ShoppingCart className="text-indigo-400" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {product.warehouses.map((warehouse) => (
+                  <div
+                    key={warehouse.warehouseId}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Warehouse
+                          size={16}
+                          className="text-cyan-400"
+                        />
+
+                        <span className="font-medium">
+                          {warehouse.warehouseName}
+                        </span>
+                      </div>
+
+                      <span className="text-sm px-3 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/20">
+                        {warehouse.availableStock} Available
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 text-center mb-4">
+                      <div className="bg-white/5 rounded-xl py-3">
+                        <p className="text-xs text-gray-400">Total</p>
+                        <p className="font-bold text-lg">
+                          {warehouse.totalStock}
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 rounded-xl py-3">
+                        <p className="text-xs text-gray-400">Reserved</p>
+                        <p className="font-bold text-lg text-yellow-400">
+                          {warehouse.reservedStock}
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 rounded-xl py-3">
+                        <p className="text-xs text-gray-400">Available</p>
+                        <p className="font-bold text-lg text-green-400">
+                          {warehouse.availableStock}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        reserveProduct(
+                          product.id,
+                          warehouse.warehouseId
+                        )
+                      }
+                      disabled={
+                        loading ||
+                        warehouse.availableStock <= 0
+                      }
+                      className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-cyan-500 py-3 font-semibold hover:opacity-90 transition disabled:opacity-40"
+                    >
+                      Reserve Item
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
-    </div>
+
+      </div>
+    </main>
   );
 }
