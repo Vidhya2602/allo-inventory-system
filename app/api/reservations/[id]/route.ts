@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json(
@@ -15,12 +15,9 @@ export async function GET(
       );
     }
 
-    const reservation =
-      await prisma.reservation.findUnique({
-        where: {
-          id,
-        },
-      });
+    const reservation = await prisma.reservation.findUnique({
+      where: { id },
+    });
 
     if (!reservation) {
       return NextResponse.json(
@@ -29,21 +26,16 @@ export async function GET(
       );
     }
 
-    // Expiry check
     const isExpired =
       reservation.expiresAt &&
-      new Date(reservation.expiresAt).getTime() <
-        Date.now();
+      new Date(reservation.expiresAt).getTime() < Date.now();
 
     return NextResponse.json({
       ...reservation,
       isExpired,
     });
   } catch (error) {
-    console.error(
-      "GET reservation error:",
-      error
-    );
+    console.error("GET reservation error:", error);
 
     return NextResponse.json(
       { error: "Internal server error" },
