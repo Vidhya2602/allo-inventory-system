@@ -9,18 +9,28 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [reservation, setReservation] = useState<any>(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
 
+  // Fetch reservation
   useEffect(() => {
     fetchReservation();
   }, []);
 
+  // Countdown timer
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!reservation) return;
+    if (!reservation?.expiresAt) return;
 
-      const diff =
-        new Date(reservation.expiresAt).getTime() - Date.now();
+    const interval = setInterval(() => {
+      const expiry = new Date(reservation.expiresAt).getTime();
+      const now = Date.now();
+
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        setTimeLeft(0);
+        clearInterval(interval);
+        return;
+      }
 
       setTimeLeft(diff);
     }, 1000);
@@ -29,9 +39,16 @@ export default function CheckoutPage() {
   }, [reservation]);
 
   async function fetchReservation() {
-    const res = await fetch(`/api/reservations/${params.id}`);
-    const data = await res.json();
-    setReservation(data);
+    try {
+      const res = await fetch(`/api/reservations/${params.id}`);
+      const data = await res.json();
+
+      console.log("Reservation:", data);
+
+      setReservation(data);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function confirmReservation() {
@@ -72,6 +89,7 @@ export default function CheckoutPage() {
     router.push("/");
   }
 
+  // Loading state
   if (!reservation) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
@@ -80,16 +98,15 @@ export default function CheckoutPage() {
     );
   }
 
-  const minutes = Math.max(0, Math.floor(timeLeft / 60000));
-  const seconds = Math.max(
-    0,
-    Math.floor((timeLeft % 60000) / 1000)
-  );
+  // Safe timer formatting
+  const minutes = Math.floor(timeLeft / 1000 / 60);
+  const seconds = Math.floor((timeLeft / 1000) % 60);
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main className="min-h-screen flex items-center justify-center px-6 bg-black text-white">
       <div className="max-w-xl w-full rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8">
 
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold">
@@ -106,6 +123,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* Reservation Info */}
         <div className="space-y-5 mb-8">
 
           <div className="rounded-2xl bg-black/20 border border-white/10 p-5">
@@ -128,6 +146,7 @@ export default function CheckoutPage() {
             </span>
           </div>
 
+          {/* Timer */}
           <div className="rounded-2xl bg-black/20 border border-white/10 p-5 text-center">
             <p className="text-gray-400 mb-2">
               Time Remaining
@@ -139,6 +158,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* Buttons */}
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={confirmReservation}
